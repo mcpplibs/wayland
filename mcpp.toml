@@ -33,4 +33,11 @@ members = [
     "mcpp/util",
     "mcpp/client",
     "mcpp/server",
+    # The client's other half. A Wayland program that draws with the GPU needs
+    # `wl_egl_window_create` to turn a wl_surface into something EGL can render
+    # into, and it exists nowhere else — so without this member "Wayland client
+    # + EGL" is not expressible at all. It went missing because the first four
+    # cover what a COMPOSITOR needs, and a compositor renders into GBM buffers
+    # instead.
+    "mcpp/egl",
 ]

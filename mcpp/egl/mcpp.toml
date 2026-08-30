@@ -1,0 +1,83 @@
+# libwayland-egl — the client-side window handle EGL renders into.
+#
+# WHAT IT IS, AND WHY ITS ABSENCE BREAKS A WHOLE CLASS OF PROGRAM
+#
+# A Wayland client that draws with the GPU needs three things: a `wl_surface`
+# from libwayland-client, an `EGLDisplay` from libEGL, and something to join
+# them. That something is `wl_egl_window_create(surface, w, h)` — the only way
+# to get an `EGLNativeWindowType` on Wayland, and it lives here and nowhere
+# else. Without this library the sequence
+#
+#     wl_surface        -> wl_egl_window -> eglCreateWindowSurface -> draw
+#
+# has no second step, so "Wayland client + EGL" is simply not expressible.
+# Compositors do not need it (they render into GBM buffers); clients cannot do
+# without it.
+#
+# It was missing because the fork built the four members the SERVER side needs
+# and stopped. Upstream ships it in this same tarball — `upstream/egl/`, 118
+# lines — so this is a member that was never written rather than a decision.
+#
+# ─────────────────────────────────────────────────────────────────────────
+# WHY A SEPARATE MEMBER RATHER THAN PART OF THE CLIENT
+#
+# The same reason client and server are separate: `libwayland-egl.so.1` is its
+# own SONAME, and mcpp links every library target in a package against all of
+# that package's objects — one package cannot emit two libraries with disjoint
+# contents. Mesa's libEGL carries DT_NEEDED on `libwayland-egl.so.1` by that
+# name, so it has to be its own file.
+[package]
+namespace = "freedesktop"
+name      = "wayland-egl"
+version   = "1.26.0"
+standard  = "c++23"
+description = "libwayland-egl 1.26.0 — wl_egl_window, the bridge from a wl_surface to an EGL window surface"
+license   = "MIT"
+repo      = "https://github.com/mcpplibs/wayland"
+
+[build]
+# One upstream file. `wayland-egl-abi-check.c` is deliberately absent: it is
+# upstream's own test that the struct layout has not changed, and it has a
+# `main()` — see the note in ../../mcpp/scanner about why a member that
+# provides `main` cannot be linked into a consumer.
+sources = [
+    "../../upstream/egl/wayland-egl.c",
+    "src/wayland-egl.cppm",
+]
+
+# `../generated` is here for a TRANSITIVE include, not a direct one:
+# `wayland-egl.h` includes `<wayland-client.h>`, which includes the header
+# wayland-scanner emits. The .c file itself names only wayland-egl.h,
+# wayland-egl-backend.h and wayland-util.h.
+include_dirs = [
+    "../../upstream/egl",
+    "../../upstream/src",
+    "../generated",
+]
+
+# -fvisibility=hidden matches upstream's compiler_flags; the public surface is
+# exactly what WL_EXPORT marks, which here is the four functions in
+# wayland-egl-core.h. No -D_GNU_SOURCE and no config.h: this file uses nothing
+# outside C99 plus <stdlib.h>/<string.h>, which is why upstream's meson entry
+# for it carries no dependencies either.
+cflags = [
+    "-fPIC",
+    "-fvisibility=hidden",
+]
+
+[lib]
+path = "src/wayland-egl.cppm"
+
+[targets.wayland-egl]
+kind   = "shared"
+soname = "libwayland-egl.so.1"
+
+[dependencies]
+# `Requires: wayland-client` in upstream's wayland-egl.pc, and it means the
+# HEADERS: `wayland-egl.h` includes <wayland-client.h>. It is NOT a link
+# dependency — upstream's `Libs:` is `-lwayland-egl` alone, and wayland-egl.c
+# calls no client function (verified: the only `wl_*(` in it are its own four
+# definitions). Declared anyway, because a consumer holding a `wl_egl_window`
+# necessarily got its `wl_surface` from libwayland-client, so the edge is real
+# even where the linker does not see it.
+freedesktop.wayland = { path = "../client" }
