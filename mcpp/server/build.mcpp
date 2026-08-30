@@ -50,7 +50,8 @@ int main() {
         mcpp::action a;
         a.id          = g.id;
         a.role        = "source";
-        a.description = std::string("wayland-scanner -> ") + g.output;
+        const std::string desc = std::string("wayland-scanner -> ") + g.output;
+        a.description = desc.c_str();
         a.arg(scanner).arg("-s").arg(g.mode);
         if (g.core != nullptr) {
             a.arg(g.core);

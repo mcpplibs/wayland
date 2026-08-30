@@ -1,14 +1,14 @@
 # mcpplibs/wayland
 
-[Wayland](https://gitlab.freedesktop.org/wayland/wayland) 1.23.1 with mcpp build
+[Wayland](https://gitlab.freedesktop.org/wayland/wayland) 1.26.0 with mcpp build
 support, consumed from [mcpp-index](https://github.com/mcpplibs/mcpp-index) as
 three packages:
 
 | package | output |
 |---|---|
-| `compat.wayland-scanner` | `wayland-scanner`, the protocol code generator |
-| `compat.wayland` | `libwayland-client.so.0` |
-| `compat.wayland-server` | `libwayland-server.so.0` |
+| `freedesktop.wayland-scanner` | `wayland-scanner`, the protocol code generator |
+| `freedesktop.wayland` | `libwayland-client.so.0` |
+| `freedesktop.wayland-server` | `libwayland-server.so.0` |
 
 ```bash
 mcpp build --workspace
@@ -42,5 +42,5 @@ version, so that mismatch is not expressible.
 
 ## Upstream
 
-Tracking wayland 1.23.1. Upstream sources, `protocol/`, `tests/` and the meson
+Tracking wayland 1.26.0. Upstream sources, `protocol/`, `tests/` and the meson
 build are untouched, so `meson setup build && ninja -C build` still works.

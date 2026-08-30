@@ -16,7 +16,7 @@
 #pragma once
 
 #define PACKAGE         "wayland"
-#define PACKAGE_VERSION "1.23.1"
+#define PACKAGE_VERSION "1.26.0"
 
 #define HAVE_SYS_PRCTL_H 1
 /* sys/procctl.h and sys/ucred.h are BSD; absent on linux. */
@@ -28,6 +28,8 @@
 #define HAVE_MEMFD_CREATE    1
 #define HAVE_MREMAP          1
 #define HAVE_STRNDUP         1
+/* new in 1.26: wayland-server uses it for the client thread id. */
+#define HAVE_GETTID          1
 
 /* `struct xucred` is FreeBSD's; the socket peer-credential path uses
  * SO_PEERCRED on linux instead. */

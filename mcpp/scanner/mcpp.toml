@@ -11,8 +11,9 @@
 # on would add libxml2 to this index for a check that only matters to people
 # EDITING the protocol.
 [package]
+namespace = "freedesktop"
 name     = "wayland-scanner"
-version  = "1.23.1"
+version  = "1.26.0"
 standard = "c++23"
 
 [build]
@@ -27,7 +28,12 @@ include_dirs = ["../..", "../../src", "../include"]
 # it. Without this its `#ifndef HAVE_STRNDUP` fallback compiles a second
 # strndup() into the binary, which then SHADOWS glibc's for every library the
 # process loads — mcpp reports it, and it is a real defect rather than noise.
-cflags       = ["-DHAVE_STRNDUP=1"]
+# _GNU_SOURCE with an EMPTY value: scanner.c calls strndup(), which -std=c11
+# hides behind __STRICT_ANSI__ — without it the call is implicitly declared
+# int-returning and 1.26 fails at `ctx->description->text = strndup(...)`.
+# HAVE_STRNDUP additionally suppresses upstream's own fallback definition,
+# which would otherwise shadow glibc's process-wide.
+cflags       = ["-D_GNU_SOURCE=", "-DHAVE_STRNDUP=1"]
 
 [targets.wayland-scanner]
 kind = "bin"

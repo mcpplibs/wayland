@@ -1,0 +1,31 @@
+# freedesktop.wayland-util — wayland's public macros, as a module.
+#
+# A module cannot export a macro, so the fourteen in wayland's public headers
+# would simply be missing from `import wayland.client;`. This package carries
+# them as a constant, a function template and a set of ranges — see
+# src/wayland-util.cppm for the one-to-one table.
+#
+# It is its own package rather than part of either library because BOTH need it
+# and they are independent: wayland-util.h is compiled into libwayland-client
+# and libwayland-server alike. Nothing links here — the package is a module and
+# a set of templates, with no library target of its own.
+[package]
+namespace   = "freedesktop"
+name        = "wayland-util"
+version     = "1.26.0"
+standard    = "c++23"
+description = "wayland's public macros as a C++23 module — constants, container_of, and list/array ranges"
+license     = "MIT"
+repo        = "https://github.com/mcpplibs/wayland"
+
+[build]
+# wayland-util.h only: the templates are written against wl_list and wl_array,
+# which it declares. No library is linked, so there is no dependency here.
+include_dirs = ["../../src"]
+sources      = ["src/wayland-util.cppm"]
+
+[lib]
+path = "src/wayland-util.cppm"
+
+[targets.wayland-util]
+kind = "lib"

@@ -8,8 +8,9 @@
 # two libraries with disjoint contents. mcpp's own diagnostic says as much:
 # "for config that must affect shared code, split into a workspace member".
 [package]
+namespace = "freedesktop"
 name     = "wayland"
-version  = "1.23.1"
+version  = "1.26.0"
 standard = "c++23"
 
 [build]
@@ -22,6 +23,8 @@ sources = [
     "../../src/connection.c",
     "../../src/wayland-os.c",
     "../../src/wayland-util.c",
+    # the module wrapper; see src/wayland-client.cppm
+    "src/wayland-client.cppm",
 ]
 include_dirs = ["../..", "../../src", "../include"]
 # -include config.h is how upstream delivers the probe results; the sources
@@ -56,6 +59,12 @@ cflags = [
     "-fvisibility=hidden",
 ]
 
+[lib]
+# Not the `src/<package-tail>.cppm` convention: the tail is `wayland` but the
+# module this package exports is the client one, and naming the file after
+# what it exports beats matching a convention nobody reads.
+path = "src/wayland-client.cppm"
+
 [targets.wayland-client]
 kind   = "shared"
 soname = "libwayland-client.so.0"
@@ -66,4 +75,4 @@ soname = "libwayland-client.so.0"
 compat.libffi = "3.4.8"
 # The generator, as a host tool. Its version IS this package's version, so a
 # scanner/protocol mismatch is not expressible.
-compat.wayland-scanner = { version = "1.23.1", tools = ["wayland-scanner"] }
+freedesktop.wayland-scanner = { version = "1.26.0", tools = ["wayland-scanner"] }

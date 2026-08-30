@@ -1,6 +1,6 @@
 # wayland — Wayland with mcpp build support.
 #
-# A fork of freedesktop's wayland at 1.23.1, unmodified except for this
+# A fork of freedesktop's wayland at 1.26.0, unmodified except for this
 # directory tree: `mcpp/` adds manifests, `config.h` and `mcpp/include/` add the
 # two headers upstream's meson generates. No upstream source file is patched.
 #
@@ -28,6 +28,7 @@
 [workspace]
 members = [
     "mcpp/scanner",
+    "mcpp/util",
     "mcpp/client",
     "mcpp/server",
 ]
