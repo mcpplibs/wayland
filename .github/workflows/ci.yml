@@ -130,6 +130,18 @@ jobs:
           done
           echo "generated code matches wayland.xml and this scanner"
 
+      - name: the module wrappers match the generator
+        run: |
+          # The .cppm files and the -module.h copies are generated from the
+          # public headers. Checked in, so they can drift; this stops it.
+          python3 mcpp/tools/genmod.py .
+          if ! git diff --quiet; then
+            echo "::error::module wrappers are out of date — run mcpp/tools/genmod.py ."
+            git diff --stat
+            exit 1
+          fi
+          echo "module wrappers match"
+
       - name: every module produced an interface
         run: |
           for m in wayland.client wayland.server wayland.util; do

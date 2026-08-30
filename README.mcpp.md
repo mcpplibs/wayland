@@ -25,6 +25,26 @@ code written against the C headers ports by swapping one line.
 The export lists are **generated from the public headers** rather than kept by
 hand, so a version bump cannot quietly drop a name.
 
+## What crosses the module boundary, and what does not
+
+`export` names entities, and it cannot name one with **internal linkage**. That
+rule decides the whole layout here:
+
+- **Types, `wl_proxy_*` / `wl_display_*` / `wl_resource_*`, the interface
+  objects, the enums** — external linkage, re-exported with `using ::name;`.
+- **The protocol wrappers** (`wl_surface_attach`, `wl_data_device_send_drop`, …)
+  — wayland-scanner emits them `static inline`. A copy of the generated header
+  with `static inline` changed to `inline` is included *inside the module
+  purview*, which gives them external linkage; everything in it sits inside
+  `extern "C"`, so it keeps C language linkage and still matches
+  `wayland-protocol.c`'s definitions. GCC accepts the naive `using ::name;`
+  here and clang rejects it — clang is right, and CI runs both.
+- **`wl_fixed_to_double` and friends, `wl_signal_*`** — `static inline` in
+  `wayland-util.h` / `wayland-server-core.h`, which the module includes in its
+  global module fragment. Those cannot be reached, so a consumer that needs them
+  includes the header next to the import. Four and five names respectively.
+- **Macros** — not entities at all; see below.
+
 ## Macros are the one thing that could not cross
 
 `export` names entities, and a macro is not one. Wayland's public surface has

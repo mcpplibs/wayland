@@ -1,24 +1,33 @@
 // wayland.server — libwayland-server, as a C++23 module.
 //
 // A module wrapper and nothing more: every name below is upstream's, spelled
-// upstream's way. `import wayland.server;` replaces the #include and changes nothing
-// else — same functions, same structs, same semantics — so code written
-// against the C headers ports by swapping one line.
+// upstream's way, with upstream's signature. `import wayland.server;` replaces the
+// #include and changes nothing else, so code written against the C headers
+// ports by swapping one line.
 //
-// The lists are GENERATED from the public headers, not hand-kept, so a version
-// bump cannot quietly drop a name.
+// GENERATED from the public headers by mcpp/tools/genmod.py — not hand-kept,
+// so a version bump cannot quietly drop a name.
+//
+// TWO KINDS OF EXPORT, AND THE REASON IS A LANGUAGE RULE.
+//
+// Most names are re-exported with `using ::name;`. The protocol convenience
+// wrappers cannot be: wayland-scanner emits them `static inline`, which is
+// INTERNAL LINKAGE, and C++ forbids exporting such an entity —
+//
+//     error: using declaration referring to 'wl_surface_attach' with
+//            internal linkage cannot be exported
+//
+// GCC accepts it, Clang rejects it, and Clang is right. So each one gets a
+// one-line `export inline` forwarder with the identical signature that calls
+// the static original. Same name, same arguments, same semantics; the only
+// thing that changed is a linkage the caller cannot observe.
 //
 // MACROS ARE NOT HERE, and cannot be: `export` names entities and a macro is
-// not one. wayland's public macros are in the `wayland.util` module
-// (freedesktop.wayland-util), which maps each one to the entity it actually is
-// — a constant, a function template, a range:
-//
-//     import wayland.util;
-//     for (node *n : wl_list_each<&node::link>(&head)) ...
+// not one. wayland's public macros live in the `wayland.util` module
+// (freedesktop.wayland-util), which maps each to the entity it actually is.
 module;
 
 #include <wayland-server-core.h>
-#include <wayland-server.h>
 
 export module wayland.server;
 
@@ -27,30 +36,11 @@ export {
 // -- types --
 using ::wl_argument;
 using ::wl_array;
-using ::wl_buffer;
-using ::wl_buffer_interface;
-using ::wl_callback;
 using ::wl_client;
 using ::wl_client_for_each_resource_iterator_func_t;
-using ::wl_compositor;
-using ::wl_compositor_interface;
-using ::wl_data_device;
-using ::wl_data_device_error;
-using ::wl_data_device_interface;
-using ::wl_data_device_manager;
-using ::wl_data_device_manager_dnd_action;
-using ::wl_data_device_manager_interface;
-using ::wl_data_offer;
-using ::wl_data_offer_error;
-using ::wl_data_offer_interface;
-using ::wl_data_source;
-using ::wl_data_source_error;
-using ::wl_data_source_interface;
 using ::wl_dispatcher_func_t;
 using ::wl_display;
-using ::wl_display_error;
 using ::wl_display_global_filter_func_t;
-using ::wl_display_interface;
 using ::wl_event_loop;
 using ::wl_event_loop_fd_func_t;
 using ::wl_event_loop_idle_func_t;
@@ -58,78 +48,26 @@ using ::wl_event_loop_signal_func_t;
 using ::wl_event_loop_timer_func_t;
 using ::wl_event_source;
 using ::wl_fixed_t;
-using ::wl_fixes;
-using ::wl_fixes_error;
-using ::wl_fixes_interface;
 using ::wl_global;
 using ::wl_global_bind_func_t;
 using ::wl_global_withdrawn_func_t;
 using ::wl_interface;
 using ::wl_iterator_result;
-using ::wl_keyboard;
-using ::wl_keyboard_interface;
-using ::wl_keyboard_key_state;
-using ::wl_keyboard_keymap_format;
 using ::wl_list;
 using ::wl_listener;
 using ::wl_log_func_t;
 using ::wl_message;
 using ::wl_notify_func_t;
 using ::wl_object;
-using ::wl_output;
-using ::wl_output_interface;
-using ::wl_output_mode;
-using ::wl_output_subpixel;
-using ::wl_output_transform;
-using ::wl_pointer;
-using ::wl_pointer_axis;
-using ::wl_pointer_axis_relative_direction;
-using ::wl_pointer_axis_source;
-using ::wl_pointer_button_state;
-using ::wl_pointer_error;
-using ::wl_pointer_interface;
 using ::wl_protocol_logger;
 using ::wl_protocol_logger_func_t;
 using ::wl_protocol_logger_message;
 using ::wl_protocol_logger_type;
-using ::wl_region;
-using ::wl_region_interface;
-using ::wl_registry;
-using ::wl_registry_interface;
 using ::wl_resource;
 using ::wl_resource_destroy_func_t;
-using ::wl_seat;
-using ::wl_seat_capability;
-using ::wl_seat_error;
-using ::wl_seat_interface;
-using ::wl_shell;
-using ::wl_shell_error;
-using ::wl_shell_interface;
-using ::wl_shell_surface;
-using ::wl_shell_surface_fullscreen_method;
-using ::wl_shell_surface_interface;
-using ::wl_shell_surface_resize;
-using ::wl_shell_surface_transient;
-using ::wl_shm;
 using ::wl_shm_buffer;
-using ::wl_shm_error;
-using ::wl_shm_format;
-using ::wl_shm_interface;
 using ::wl_shm_pool;
-using ::wl_shm_pool_error;
-using ::wl_shm_pool_interface;
 using ::wl_signal;
-using ::wl_subcompositor;
-using ::wl_subcompositor_error;
-using ::wl_subcompositor_interface;
-using ::wl_subsurface;
-using ::wl_subsurface_error;
-using ::wl_subsurface_interface;
-using ::wl_surface;
-using ::wl_surface_error;
-using ::wl_surface_interface;
-using ::wl_touch;
-using ::wl_touch_interface;
 using ::wl_user_data_destroy_func_t;
 
 // -- functions --
@@ -137,12 +75,8 @@ using ::wl_array_add;
 using ::wl_array_copy;
 using ::wl_array_init;
 using ::wl_array_release;
-using ::wl_buffer_send_release;
-using ::wl_callback_send_done;
 using ::wl_client_add_destroy_late_listener;
 using ::wl_client_add_destroy_listener;
-using ::wl_client_add_object;
-using ::wl_client_add_resource;
 using ::wl_client_add_resource_created_listener;
 using ::wl_client_create;
 using ::wl_client_destroy;
@@ -157,33 +91,12 @@ using ::wl_client_get_fd;
 using ::wl_client_get_link;
 using ::wl_client_get_object;
 using ::wl_client_get_user_data;
-using ::wl_client_new_object;
 using ::wl_client_post_implementation_error;
 using ::wl_client_post_no_memory;
 using ::wl_client_set_max_buffer_size;
 using ::wl_client_set_user_data;
-using ::wl_data_device_error_is_valid;
-using ::wl_data_device_manager_dnd_action_is_valid;
-using ::wl_data_device_send_data_offer;
-using ::wl_data_device_send_drop;
-using ::wl_data_device_send_enter;
-using ::wl_data_device_send_leave;
-using ::wl_data_device_send_motion;
-using ::wl_data_device_send_selection;
-using ::wl_data_offer_error_is_valid;
-using ::wl_data_offer_send_action;
-using ::wl_data_offer_send_offer;
-using ::wl_data_offer_send_source_actions;
-using ::wl_data_source_error_is_valid;
-using ::wl_data_source_send_action;
-using ::wl_data_source_send_cancelled;
-using ::wl_data_source_send_dnd_drop_performed;
-using ::wl_data_source_send_dnd_finished;
-using ::wl_data_source_send_send;
-using ::wl_data_source_send_target;
 using ::wl_display_add_client_created_listener;
 using ::wl_display_add_destroy_listener;
-using ::wl_display_add_global;
 using ::wl_display_add_protocol_logger;
 using ::wl_display_add_shm_format;
 using ::wl_display_add_socket;
@@ -192,7 +105,6 @@ using ::wl_display_add_socket_fd;
 using ::wl_display_create;
 using ::wl_display_destroy;
 using ::wl_display_destroy_clients;
-using ::wl_display_error_is_valid;
 using ::wl_display_flush_clients;
 using ::wl_display_get_client_list;
 using ::wl_display_get_destroy_listener;
@@ -200,7 +112,6 @@ using ::wl_display_get_event_loop;
 using ::wl_display_get_serial;
 using ::wl_display_init_shm;
 using ::wl_display_next_serial;
-using ::wl_display_remove_global;
 using ::wl_display_remove_socket_fd;
 using ::wl_display_run;
 using ::wl_display_set_default_max_buffer_size;
@@ -221,11 +132,6 @@ using ::wl_event_source_check;
 using ::wl_event_source_fd_update;
 using ::wl_event_source_remove;
 using ::wl_event_source_timer_update;
-using ::wl_fixed_from_double;
-using ::wl_fixed_from_int;
-using ::wl_fixed_to_double;
-using ::wl_fixed_to_int;
-using ::wl_fixes_error_is_valid;
 using ::wl_fixes_handle_ack_global_remove;
 using ::wl_global_create;
 using ::wl_global_destroy;
@@ -237,14 +143,6 @@ using ::wl_global_get_version;
 using ::wl_global_remove;
 using ::wl_global_set_user_data;
 using ::wl_global_set_withdrawn_listener;
-using ::wl_keyboard_key_state_is_valid;
-using ::wl_keyboard_keymap_format_is_valid;
-using ::wl_keyboard_send_enter;
-using ::wl_keyboard_send_key;
-using ::wl_keyboard_send_keymap;
-using ::wl_keyboard_send_leave;
-using ::wl_keyboard_send_modifiers;
-using ::wl_keyboard_send_repeat_info;
 using ::wl_list_empty;
 using ::wl_list_init;
 using ::wl_list_insert;
@@ -252,35 +150,7 @@ using ::wl_list_insert_list;
 using ::wl_list_length;
 using ::wl_list_remove;
 using ::wl_log_set_handler_server;
-using ::wl_output_mode_is_valid;
-using ::wl_output_send_description;
-using ::wl_output_send_done;
-using ::wl_output_send_geometry;
-using ::wl_output_send_mode;
-using ::wl_output_send_name;
-using ::wl_output_send_scale;
-using ::wl_output_subpixel_is_valid;
-using ::wl_output_transform_is_valid;
-using ::wl_pointer_axis_is_valid;
-using ::wl_pointer_axis_relative_direction_is_valid;
-using ::wl_pointer_axis_source_is_valid;
-using ::wl_pointer_button_state_is_valid;
-using ::wl_pointer_error_is_valid;
-using ::wl_pointer_send_axis;
-using ::wl_pointer_send_axis_discrete;
-using ::wl_pointer_send_axis_relative_direction;
-using ::wl_pointer_send_axis_source;
-using ::wl_pointer_send_axis_stop;
-using ::wl_pointer_send_axis_value120;
-using ::wl_pointer_send_button;
-using ::wl_pointer_send_enter;
-using ::wl_pointer_send_frame;
-using ::wl_pointer_send_leave;
-using ::wl_pointer_send_motion;
-using ::wl_pointer_send_warp;
 using ::wl_protocol_logger_destroy;
-using ::wl_registry_send_global;
-using ::wl_registry_send_global_remove;
 using ::wl_resource_add_destroy_listener;
 using ::wl_resource_create;
 using ::wl_resource_destroy;
@@ -306,17 +176,6 @@ using ::wl_resource_set_destructor;
 using ::wl_resource_set_dispatcher;
 using ::wl_resource_set_implementation;
 using ::wl_resource_set_user_data;
-using ::wl_seat_capability_is_valid;
-using ::wl_seat_error_is_valid;
-using ::wl_seat_send_capabilities;
-using ::wl_seat_send_name;
-using ::wl_shell_error_is_valid;
-using ::wl_shell_surface_fullscreen_method_is_valid;
-using ::wl_shell_surface_resize_is_valid;
-using ::wl_shell_surface_send_configure;
-using ::wl_shell_surface_send_ping;
-using ::wl_shell_surface_send_popup_done;
-using ::wl_shell_surface_transient_is_valid;
 using ::wl_shm_buffer_begin_access;
 using ::wl_shm_buffer_create;
 using ::wl_shm_buffer_end_access;
@@ -329,53 +188,27 @@ using ::wl_shm_buffer_get_width;
 using ::wl_shm_buffer_ref;
 using ::wl_shm_buffer_ref_pool;
 using ::wl_shm_buffer_unref;
-using ::wl_shm_error_is_valid;
-using ::wl_shm_format_is_valid;
-using ::wl_shm_pool_error_is_valid;
 using ::wl_shm_pool_unref;
-using ::wl_shm_send_format;
-using ::wl_signal_add;
-using ::wl_signal_emit;
 using ::wl_signal_emit_mutable;
-using ::wl_signal_get;
-using ::wl_signal_init;
-using ::wl_subcompositor_error_is_valid;
-using ::wl_subsurface_error_is_valid;
-using ::wl_surface_error_is_valid;
-using ::wl_surface_send_enter;
-using ::wl_surface_send_leave;
-using ::wl_surface_send_preferred_buffer_scale;
-using ::wl_surface_send_preferred_buffer_transform;
-using ::wl_touch_send_cancel;
-using ::wl_touch_send_down;
-using ::wl_touch_send_frame;
-using ::wl_touch_send_motion;
-using ::wl_touch_send_orientation;
-using ::wl_touch_send_shape;
-using ::wl_touch_send_up;
 
 // -- interfaces / data --
-using ::wl_buffer_interface;
-using ::wl_callback_interface;
-using ::wl_compositor_interface;
-using ::wl_data_device_interface;
-using ::wl_data_device_manager_interface;
-using ::wl_data_offer_interface;
-using ::wl_data_source_interface;
-using ::wl_display_interface;
-using ::wl_fixes_interface;
-using ::wl_keyboard_interface;
-using ::wl_output_interface;
-using ::wl_pointer_interface;
-using ::wl_region_interface;
-using ::wl_registry_interface;
-using ::wl_seat_interface;
-using ::wl_shell_interface;
-using ::wl_shell_surface_interface;
-using ::wl_shm_interface;
-using ::wl_shm_pool_interface;
-using ::wl_subcompositor_interface;
-using ::wl_subsurface_interface;
-using ::wl_surface_interface;
-using ::wl_touch_interface;
+}
+
+// The protocol API: server-side wrappers and the interface objects,
+// generated by wayland-scanner and included HERE — inside the module purview —
+// rather than in the global module fragment above.
+//
+// That placement is what makes them exportable. wayland-scanner emits them
+// `static inline`, and C++ forbids exporting an entity with internal linkage:
+//
+//     error: using declaration referring to 'wl_surface_attach' with
+//            internal linkage cannot be exported
+//
+// GCC accepts it, clang rejects it, and clang is right. The copy included below
+// is the generated header with `static inline` changed to `inline` and nothing
+// else; every declaration in it sits inside `extern "C"`, so it keeps C
+// language linkage, is not attached to this module, and still matches the
+// definitions in wayland-protocol.c.
+export {
+#include "wayland-server-protocol-module.h"
 }
