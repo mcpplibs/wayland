@@ -107,7 +107,8 @@ jobs:
           # ends in `.1` and would have been searched for by its full name.
           for pair in "client:libwayland-client.so.0" \
                       "server:libwayland-server.so.0" \
-                      "egl:libwayland-egl.so.1"; do
+                      "egl:libwayland-egl.so.1" \
+                      "cursor:libwayland-cursor.so.0"; do
             member=${pair%%:*}; want=${pair#*:}
             so=$(find . -name "${want%.*}" -type f | head -1)
             test -n "$so" || { echo "$member: no library built"; exit 1; }
@@ -168,6 +169,38 @@ jobs:
             echo "::error::libwayland-egl exports the CLIENT api (wl_display_connect)"; exit 1
           fi
           echo "libwayland-egl exports exactly its own four functions"
+
+      - name: libwayland-cursor carries its six functions and no host paths
+        run: |
+          c=$(find . -name libwayland-cursor.so -type f | head -1)
+          test -n "$c" || { echo "::error::libwayland-cursor was not built"; exit 1; }
+
+          has() { readelf --dyn-syms -W "$1" | grep -q " $2$"; }
+          for f in wl_cursor_theme_load wl_cursor_theme_destroy \
+                   wl_cursor_theme_get_cursor wl_cursor_image_get_buffer \
+                   wl_cursor_frame wl_cursor_frame_and_duration; do
+            has "$c" "$f" || { echo "::error::libwayland-cursor lost $f"; exit 1; }
+          done
+
+          # It DOES link the client, unlike libwayland-egl: wayland-cursor.c
+          # calls wl_shm_create_pool and friends. A missing DT_NEEDED here would
+          # mean those calls were satisfied from somewhere else.
+          readelf -d "$c" | grep -q 'libwayland-client.so.0' || {
+            echo "::error::libwayland-cursor does not link libwayland-client"; exit 1; }
+
+          # And the compiled-in HOST cursor paths are gone. xcursor.c:493 bakes
+          # in "~/.icons:/usr/share/icons:/usr/share/pixmaps:..." unless
+          # XCURSORPATH is defined, and after relocation those name the host's
+          # themes. The recipe empties it so a theme comes from XCURSOR_PATH or
+          # not at all — and grepping the binary is the only way to see that it
+          # worked, because a wrong value here fails by SILENTLY WORKING on a
+          # machine that happens to have themes in /usr/share/icons.
+          if strings "$c" | grep -qE '/usr/share/icons|/usr/X11R6|xorg-x11'; then
+            echo "::error::a host cursor path was compiled into libwayland-cursor"
+            strings "$c" | grep -E '/usr/share/icons|/usr/X11R6|xorg-x11'
+            exit 1
+          fi
+          echo "libwayland-cursor: six functions, links the client, no host paths"
 
       - name: mcpp/generated/ matches what the scanner produces
         run: |

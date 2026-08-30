@@ -40,4 +40,9 @@ members = [
     # cover what a COMPOSITOR needs, and a compositor renders into GBM buffers
     # instead.
     "mcpp/egl",
+    # The pointer image. Wayland has no server-side cursor, so a client that
+    # wants one loads a theme itself — and without this member that means
+    # parsing the XCursor file format by hand. Missing for the same reason
+    # mcpp/egl was: a compositor draws its own cursor and never asks.
+    "mcpp/cursor",
 ]

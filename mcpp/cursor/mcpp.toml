@@ -1,0 +1,97 @@
+# libwayland-cursor — the pointer image a Wayland client sets on itself.
+#
+# Wayland has no server-side cursor: a client that wants a pointer must load a
+# cursor theme, turn the image into a `wl_buffer`, and attach it to a surface it
+# passes to `wl_pointer.set_cursor`. This library is the first two steps, and
+# without it every application would have to parse the XCursor file format
+# itself — which is what this file's `xcursor.c` is.
+#
+# NOT the same thing as `compat.xcursor` in the index: that is X11's
+# `libXcursor.so.1`, which talks to an X server. This one has no X dependency
+# and produces a `wl_buffer` through `wl_shm`.
+#
+# It was missing for the same reason libwayland-egl was: the fork built the four
+# members a COMPOSITOR needs, and a compositor draws its own cursor.
+#
+# ─────────────────────────────────────────────────────────────────────────
+# THIS ONE REALLY LINKS THE CLIENT, unlike mcpp/egl
+#
+# `wayland-cursor.c` calls `wl_shm_create_pool`, `wl_shm_pool_create_buffer`,
+# `wl_shm_pool_resize` and `wl_buffer_destroy` — so upstream's
+# `dependencies: [ wayland_client_dep ]` is a link edge, not just headers. The
+# egl member's dependency on the same package is headers only; the two look
+# alike in the manifest and are not alike, which is why both say so.
+[package]
+namespace = "freedesktop"
+name      = "wayland-cursor"
+version   = "1.26.0"
+standard  = "c++23"
+description = "libwayland-cursor 1.26.0 — load an XCursor theme into a wl_buffer, for clients that set their own pointer"
+license   = "MIT"
+repo      = "https://github.com/mcpplibs/wayland"
+
+[build]
+sources = [
+    "../../upstream/cursor/wayland-cursor.c",
+    "../../upstream/cursor/os-compatibility.c",
+    "../../upstream/cursor/xcursor.c",
+    "src/wayland-cursor.cppm",
+]
+
+include_dirs = [
+    "../../upstream/cursor",
+    "../../upstream/src",
+    "../generated",
+]
+
+cflags = [
+    # os-compatibility.c needs memfd_create / mkostemp and does not define
+    # _GNU_SOURCE itself. The empty form for the same reason the client member
+    # uses it: the neighbouring files DO define it, and a valued -D would make
+    # each of them warn about a redefinition.
+    "-D_GNU_SOURCE=",
+
+    # The cursor theme search path, and it is EMPTY on purpose — the same
+    # decision as compat.libinput's LIBINPUT_QUIRKS_DIR and libgbm's backend
+    # path, reached for the same reason and with the same escape hatch.
+    #
+    # `xcursor.c:493` compiles in
+    #
+    #     "~/.icons:/usr/share/icons:/usr/share/pixmaps:~/.cursors:"
+    #     "/usr/share/cursors/xorg-x11:" ICONDIR
+    #
+    # — a list of HOST paths, baked in. After relocation those name the host's
+    # themes, so a sandboxed client would silently render the host machine's
+    # cursors, which is the same silent host edge that gave Vulkan an llvmpipe
+    # device instead of the GPU.
+    #
+    # `xcursor_library_path()` reads `getenv("XCURSOR_PATH")` FIRST and returns
+    # it verbatim when set (xcursor.c:515), so this is a fallback and not the
+    # only way in: an ecosystem that ships cursor themes declares XCURSOR_PATH,
+    # exactly as it declares XKB_CONFIG_ROOT for keyboard layouts.
+    #
+    # Emptied, a client with no XCURSOR_PATH finds no theme and
+    # `wl_cursor_theme_load` returns a theme with no cursors — visible, rather
+    # than a pointer that works on the developer's machine and nowhere else.
+    '-DICONDIR=""',
+    '-DXCURSORPATH=""',
+
+    "-fPIC",
+    "-fvisibility=hidden",
+]
+
+[lib]
+path = "src/wayland-cursor.cppm"
+
+[targets.wayland-cursor]
+kind = "shared"
+# `.so.0`, not `.so.1`: upstream versions this library `0.<minor>.<micro>` on
+# purpose so that wayland 1.x never forces a cursor SONAME bump — there is a
+# comment in upstream/cursor/meson.build explaining it, and an `error()` that
+# fires if wayland ever goes to 2.x.
+soname = "libwayland-cursor.so.0"
+
+[dependencies]
+# A LINK dependency, see the header comment. libwayland-client provides the
+# wl_shm calls this library makes.
+freedesktop.wayland = { path = "../client" }
