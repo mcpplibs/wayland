@@ -1,67 +1,95 @@
 // Generate the protocol sources for libwayland-client.
 //
-// wayland's libraries are mostly GENERATED: protocol/wayland.xml describes
-// every interface, and wayland-scanner emits the marshalling code and the
-// headers from it. Upstream does this with meson custom_targets; here it is
-// three mcpp::action edges, which means the work is DECLARED rather than done
-// — it re-runs exactly when wayland.xml changes, and a failure is attributed
-// to the edge instead of to "build.mcpp exited 1".
+// wayland's libraries are mostly GENERATED: upstream/protocol/wayland.xml
+// describes every interface, and wayland-scanner emits the marshalling code and
+// the headers from it — most of what this package compiles.
 //
-// The scanner is the one this build produced (compat.wayland-scanner, asked
-// for with `tools = ["wayland-scanner"]`), never a host one. That matters
-// more than it looks: a system wayland-scanner 1.22 rejects 1.23's
-// wayland.xml outright — it does not know the `deprecated-since` attribute —
-// so a build that reached for the host would fail or, worse, silently emit
-// code for a different protocol revision than the headers describe.
+// The scanner is the one this build produced (freedesktop.wayland-scanner, asked
+// for with `tools = ["wayland-scanner"]`), never a host one. A system
+// wayland-scanner 1.22 rejects 1.26's wayland.xml outright — it does not know the
+// `deprecated-since` attribute — so a build that reached for whatever is on
+// PATH would fail, or worse emit code for a different protocol revision than the
+// headers describe.
+//
+// WHY THIS RUNS THE SCANNER INSTEAD OF DECLARING mcpp::action EDGES
+//
+// Declaring them is the nicer shape and was tried first. It does not work for a
+// DEPENDENCY's own sources: an action's outputs become ninja nodes, but the
+// package's compile edges get no order-only dependency on them, so
+// `wayland-server.o` races the generator and usually loses —
+//
+//     wayland-server.c:334: error: 'WL_DISPLAY_ERROR' undeclared
+//
+// with the header appearing in the output directory moments later. build.mcpp
+// itself runs at CONFIGURE time, before ninja is written, so doing the work here
+// is ordered by construction. `rerun_if_changed` keeps it incremental.
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 import mcpp;
 
-int main() {
+namespace {
+
+// One scanner invocation. Returns false and explains itself rather than
+// letting a silent partial generation surface later as a missing symbol.
+bool generate(const std::string &scanner, const std::string &mode,
+              const std::string &core, const std::string &xml,
+              const std::string &out)
+{
+    std::string cmd = "'" + scanner + "' -s " + mode;
+    if (!core.empty()) {
+        cmd += " " + core;
+    }
+    cmd += " '" + xml + "' '" + out + "'";
+
+    if (std::system(cmd.c_str()) != 0) {
+        std::fprintf(stderr, "wayland-scanner failed: %s\n", cmd.c_str());
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
+int main()
+{
     const std::string root = mcpp::manifest_dir();
     const std::string out  = mcpp::out_dir();
 
     const char *scanner = mcpp::dep_bin("wayland-scanner", "wayland-scanner");
     if (scanner == nullptr || *scanner == '\0') {
-        std::fputs("no wayland-scanner: declare  compat.wayland-scanner = "
-                   "{ version = \"1.23.1\", tools = [\"wayland-scanner\"] }\n",
+        std::fputs("no wayland-scanner: declare  freedesktop.wayland-scanner = "
+                   "{ version = \"1.26.0\", tools = [\"wayland-scanner\"] }\n",
                    stderr);
         return 1;
     }
 
-    const std::string xml = root + "/../../protocol/wayland.xml";
+    const std::string xml = root + "/../../upstream/protocol/wayland.xml";
+    mcpp::rerun_if_changed(xml.c_str());
 
-    struct Gen { const char *id; const char *mode; const char *core; const char *output; };
+    struct Gen { const char *mode; const char *core; const char *output; };
     const Gen work[] = {
-        // The marshalling code: wl_interface tables and the proxy/resource
-        // stubs. Both libraries carry it — upstream does the same, and
+        // The marshalling code: the wl_interface tables and the proxy/resource
+        // stubs. BOTH libraries carry it — upstream does the same, and
         // `wl_display_interface` is exported from libwayland-client.so.0 and
         // libwayland-server.so.0 alike.
-        { "wayland:protocol-code", "public-code",  nullptr, "wayland-protocol.c" },
-        { "wayland:client-header", "client-header",       nullptr, "wayland-client-protocol.h" },
+        { "public-code",    nullptr, "wayland-protocol.c" },
+        { "client-header", nullptr, "wayland-client-protocol.h" },
         // The -c variant: the same header without the convenience wrappers.
-        // Not installed by upstream, but the .c above includes it.
-        { "wayland:client-core",   "client-header",   "-c",    "wayland-client-protocol-core.h" },
+        // Upstream does not install it, but the generated .c includes it.
+        { "client-header", "-c",    "wayland-client-protocol-core.h" },
     };
 
     for (const Gen &g : work) {
-        const std::string output = out + "/" + g.output;
-        mcpp::action a;
-        a.id          = g.id;
-        a.role        = "source";
-        const std::string desc = std::string("wayland-scanner -> ") + g.output;
-        a.description = desc.c_str();
-        a.arg(scanner).arg("-s").arg(g.mode);
-        if (g.core != nullptr) {
-            a.arg(g.core);
+        if (!generate(scanner, g.mode, g.core == nullptr ? "" : g.core,
+                      xml, out + "/" + g.output)) {
+            return 1;
         }
-        a.arg(xml.c_str())
-         .arg(output.c_str())
-         .input(xml.c_str())
-         .output(output.c_str())
-         .submit();
     }
 
+    // The generated .c is a translation unit of this package; the headers are
+    // reached through the include directory.
+    mcpp::source((out + "/wayland-protocol.c").c_str());
     mcpp::include_dir(out.c_str());
 }

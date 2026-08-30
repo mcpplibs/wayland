@@ -19,16 +19,16 @@ standard = "c++23"
 # (connection.c, wayland-os.c) and `wayland_util` (wayland-util.c). The
 # generated wayland-protocol.c arrives from build.mcpp, not from here.
 sources = [
-    "../../src/wayland-server.c",
-    "../../src/wayland-shm.c",
-    "../../src/event-loop.c",
-    "../../src/connection.c",
-    "../../src/wayland-os.c",
-    "../../src/wayland-util.c",
+    "../../upstream/src/wayland-server.c",
+    "../../upstream/src/wayland-shm.c",
+    "../../upstream/src/event-loop.c",
+    "../../upstream/src/connection.c",
+    "../../upstream/src/wayland-os.c",
+    "../../upstream/src/wayland-util.c",
     # the module wrapper; see src/wayland-server.cppm
     "src/wayland-server.cppm",
 ]
-include_dirs = ["../..", "../../src", "../include"]
+include_dirs = ["..", "../../upstream/src", "../include"]
 # -include config.h is how upstream delivers the probe results; the sources
 # have no #include for it and the `#ifndef HAVE_STRNDUP` fallback would
 # otherwise compile a second strndup() that shadows glibc's process-wide.

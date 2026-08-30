@@ -1,8 +1,10 @@
 # wayland — Wayland with mcpp build support.
 #
-# A fork of freedesktop's wayland at 1.26.0, unmodified except for this
-# directory tree: `mcpp/` adds manifests, `config.h` and `mcpp/include/` add the
-# two headers upstream's meson generates. No upstream source file is patched.
+# LAYOUT: upstream/ is wayland 1.26.0 verbatim and is never touched — updating it
+# is replacing that one directory. Everything this fork adds is under mcpp/,
+# including the two headers upstream's meson would generate (config.h and
+# include/wayland-version.h), so `git diff` against a fresh tarball is empty
+# inside upstream/ by construction.
 #
 # WHY A FORK RATHER THAN AN INLINE INDEX DESCRIPTOR
 #

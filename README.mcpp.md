@@ -77,25 +77,41 @@ code, split into a workspace member."*
 Each library package carries its C library **and** its module, so there is one
 package per library rather than a C one and a module one beside it.
 
-## What was added
-
-Nothing upstream was patched:
+## Layout
 
 ```
-config.h              the probe results meson's configure_file() writes, for
-                      linux/glibc (wayland-os.c says "../config.h", so it is
-                      at the tree root)
-mcpp/include/         wayland-version.h, substituted from src/wayland-version.h.in
-mcpp/scanner/         the generator
-mcpp/util/            the macro mappings + their test
-mcpp/client/          libwayland-client + wayland.client, and build.mcpp
-mcpp/server/          libwayland-server + wayland.server, and build.mcpp
+upstream/             wayland 1.26.0, verbatim — never touched
+mcpp/                 everything this fork adds
+  config.h            the probe results meson's configure_file() writes, for
+                      linux/glibc. Two spellings reach it: wayland-shm.c says
+                      "config.h" and wayland-os.c says "../config.h", so the
+                      manifests put both `mcpp/` and `mcpp/include/` on the
+                      include path and one file answers both.
+  include/            wayland-version.h, substituted from src/wayland-version.h.in
+  scanner/            the generator
+  util/               the macro mappings + their test
+  client/             libwayland-client + wayland.client, and build.mcpp
+  server/             libwayland-server + wayland.server, and build.mcpp
 mcpp.toml             the workspace root
 ```
 
-`build.mcpp` declares the wayland-scanner invocations as build-graph edges, so
-they re-run exactly when `protocol/wayland.xml` changes and a failure is
-attributed to the edge rather than to "build.mcpp exited 1".
+Updating upstream is replacing `upstream/`. Nothing this fork adds lives inside
+it, so a diff against a fresh release tarball is empty there by construction —
+and CI checks that by building `upstream/` with its own meson on every run.
+
+`build.mcpp` runs wayland-scanner at CONFIGURE time rather than declaring
+`mcpp::action` edges. The declarative shape was tried first and does not work
+for a dependency's own sources: an action's outputs become ninja nodes, but the
+package's compile edges get no order-only dependency on them, so
+`wayland-server.o` races the generator —
+
+```
+wayland-server.c:334: error: 'WL_DISPLAY_ERROR' undeclared
+```
+
+with the header landing in the output directory moments later. build.mcpp runs
+before ninja is written, so doing the work there is ordered by construction;
+`rerun_if_changed(wayland.xml)` keeps it incremental.
 
 ## Upstream
 

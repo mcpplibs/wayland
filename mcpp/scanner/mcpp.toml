@@ -19,10 +19,10 @@ standard = "c++23"
 [build]
 # wayland-util.c is upstream's `wayland_util` static library — the scanner
 # links it for wl_list/wl_array.
-sources      = ["../../src/wayland-util.c"]
+sources      = ["../../upstream/src/wayland-util.c"]
 # ../../src for wayland-util.h; ../include for the committed config.h and
 # wayland-version.h that scanner.c includes.
-include_dirs = ["../..", "../../src", "../include"]
+include_dirs = ["..", "../../upstream/src", "../include"]
 # `-include config.h` is how upstream delivers it (meson's
 # `scanner_args = ['-include', 'config.h']`); scanner.c has no #include for
 # it. Without this its `#ifndef HAVE_STRNDUP` fallback compiles a second
@@ -37,7 +37,7 @@ cflags       = ["-D_GNU_SOURCE=", "-DHAVE_STRNDUP=1"]
 
 [targets.wayland-scanner]
 kind = "bin"
-main = "../../src/scanner.c"
+main = "../../upstream/src/scanner.c"
 
 [dependencies]
 compat.expat = "2.7.1"
