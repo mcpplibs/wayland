@@ -50,7 +50,7 @@ jobs:
       - name: Install xlings + mcpp
         env:
           XLINGS_NON_INTERACTIVE: "1"
-          XLINGS_VERSION: "2026.8.27.4"
+          XLINGS_VERSION: "2026.8.27.5"
         run: |
           curl -fsSL https://d2learn.org/xlings-install.sh | bash
           echo "$HOME/.xlings/bin" >> "$GITHUB_PATH"
