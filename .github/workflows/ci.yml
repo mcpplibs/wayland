@@ -73,8 +73,10 @@ jobs:
             exit 1
           fi
           echo "found: $scanner"
-          "$scanner" --version
-          "$scanner" --version | grep -qx 'wayland-scanner 1.26.0'
+          # --version goes to STDERR, so the pipe needs 2>&1 or grep reads nothing
+          # and the check fails on a scanner that is perfectly fine.
+          "$scanner" --version 2>&1
+          "$scanner" --version 2>&1 | grep -qx 'wayland-scanner 1.26.0'
 
       - name: the generated protocol code came from THIS scanner
         run: |
