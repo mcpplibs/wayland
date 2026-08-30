@@ -97,7 +97,10 @@ mcpp.toml             the workspace root
 
 Updating upstream is replacing `upstream/`. Nothing this fork adds lives inside
 it, so a diff against a fresh release tarball is empty there by construction —
-and CI checks that by building `upstream/` with its own meson on every run.
+and CI checks exactly that on every run, by downloading wayland 1.26.0 and
+comparing. Not by building it with meson: this repository builds one way,
+through mcpp, and comparing is the stronger check anyway — a successful meson
+build proves the tree still builds, not that nothing was edited.
 
 `build.mcpp` runs wayland-scanner at CONFIGURE time rather than declaring
 `mcpp::action` edges. The declarative shape was tried first and does not work
@@ -115,6 +118,6 @@ before ninja is written, so doing the work there is ordered by construction;
 
 ## Upstream
 
-Tracking wayland 1.26.0. Upstream sources, `protocol/`, `tests/` and the meson
-build are untouched — CI builds the tree with `meson setup && ninja` on every
-run, so "no upstream file is patched" has a test rather than a promise.
+Tracking wayland 1.26.0. `upstream/` is the release tarball byte for byte, and
+CI diffs it against a freshly downloaded one on every run — so "no upstream file
+is patched" has a test rather than a promise.

@@ -106,14 +106,32 @@ jobs:
           echo "wayland.client, wayland.server and wayland.util all have interfaces"
 
   upstream:
-    # The fork patches no upstream file, so meson must still build this tree.
-    # If this breaks, something was modified that should not have been.
-    name: upstream meson still builds this tree
+    # `upstream/` must be the release tarball, byte for byte.
+    #
+    # Checked by COMPARING, not by building: this repository builds one way,
+    # through mcpp, and keeping a second build system alive just to assert
+    # something would be a second thing to maintain and a second thing to
+    # disagree with the first. Comparing is also the stronger check — meson
+    # succeeding proves the tree still builds, not that nothing was edited.
+    name: upstream/ is the release tarball, unmodified
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq meson ninja-build libffi-dev libexpat1-dev
-          meson setup build-meson upstream -Ddocumentation=false -Ddtd_validation=false
-          ninja -C build-meson
+      - name: diff upstream/ against wayland 1.26.0
+        run: |
+          curl -L -fsS -o wayland.tar.xz \
+            "https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.26.0/downloads/wayland-1.26.0.tar.xz"
+          echo "64176eaa46e4969903e286f8e5ef8331affc17fdf03ac9b58381d2b23162b7a3  wayland.tar.xz" | sha256sum -c -
+          mkdir -p /tmp/pristine
+          tar -xJf wayland.tar.xz -C /tmp/pristine
+
+          # .gitignore lives at the repo root here, not inside upstream/ — it is
+          # this repository's, covering mcpp's build output. It is the one
+          # expected difference.
+          if diff -r --exclude=.gitignore /tmp/pristine/wayland-1.26.0 upstream; then
+            echo "upstream/ is pristine"
+          else
+            echo "::error::upstream/ differs from the wayland 1.26.0 release tarball."
+            echo "Everything this fork adds belongs under mcpp/."
+            exit 1
+          fi
