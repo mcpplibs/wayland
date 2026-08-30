@@ -1,13 +1,13 @@
-// wayland.util — wayland's public MACROS, as things a module can export.
+// freedesktop.wayland.util — wayland's public MACROS, as things a module can export.
 //
 // `export` names entities, and a macro is not one, so the fourteen macros in
-// wayland's public headers cannot come through `import wayland.client;`. This
+// wayland's public headers cannot come through `import freedesktop.wayland.client;`. This
 // module carries them instead — as a constant, a function template and a set
 // of ranges, which is what each macro actually is once the preprocessor is out
 // of the way.
 //
 // This is the one place the C API's SPELLING changes, and it changes because
-// C++ has no way to keep it. Everything else in wayland.client / wayland.server
+// C++ has no way to keep it. Everything else in freedesktop.wayland.client / freedesktop.wayland.server
 // is upstream's name, unchanged.
 //
 //     macro                              here
@@ -40,7 +40,7 @@ module;
 #undef wl_array_for_each
 #undef WL_MARSHAL_FLAG_DESTROY
 
-export module wayland.util;
+export module freedesktop.wayland.util;
 
 export {
 

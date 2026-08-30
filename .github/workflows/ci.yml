@@ -35,9 +35,22 @@ jobs:
       # /dev/tty` — and a runner has a /dev/tty that is readable but not
       # connected, so it dies with "No such device or address" before anything
       # is installed.
+      #
+      # XLINGS_VERSION PINS THE INSTALLER. Unpinned, this step installed
+      # whatever was newest that morning, so a red run could never be told
+      # apart from an ecosystem change — the one thing a fork's CI exists to
+      # rule out. The installer reads `${1:-${XLINGS_VERSION:-}}`, so the
+      # environment form pins it without changing the `curl | bash` shape.
+      #
+      # mcpp itself stays UNPINNED on purpose, and that is not an oversight:
+      # these packages depend on the ECOSYSTEM (`xim:mesa`'s GBM/EGL discovery
+      # rows, the toolchains), and a pinned mcpp tarball carries a frozen
+      # snapshot of it. Pinning the tool that installs, floating the ecosystem
+      # under test, is the split that makes a failure attributable.
       - name: Install xlings + mcpp
         env:
           XLINGS_NON_INTERACTIVE: "1"
+          XLINGS_VERSION: "2026.8.27.4"
         run: |
           curl -fsSL https://d2learn.org/xlings-install.sh | bash
           echo "$HOME/.xlings/bin" >> "$GITHUB_PATH"
@@ -159,12 +172,12 @@ jobs:
 
       - name: every module produced an interface
         run: |
-          for m in wayland.client wayland.server wayland.util; do
+          for m in freedesktop.wayland.client freedesktop.wayland.server freedesktop.wayland.util; do
             find . \( -name "$m.gcm" -o -name "$m.pcm" \) | head -1 | grep -q . \
               || { echo "::error::$m has no module interface"; find . -name '*.gcm' -o -name '*.pcm'; exit 1; }
             echo "$m ok"
           done
-          echo "wayland.client, wayland.server and wayland.util all have interfaces"
+          echo "freedesktop.wayland.client, freedesktop.wayland.server and freedesktop.wayland.util all have interfaces"
 
   upstream:
     # `upstream/` must be the release tarball, byte for byte.

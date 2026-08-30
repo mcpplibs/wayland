@@ -44,7 +44,7 @@ def plain(t):
     An elaborated-type-specifier in a module-purview declaration DECLARES the
     type there, and clang then rejects it:
 
-        error: declaration of 'wl_buffer' in module wayland.client follows
+        error: declaration of 'wl_buffer' in module freedesktop.wayland.client follows
                declaration in the global module
 
     The types are already declared by the global module fragment's includes, so
@@ -94,7 +94,7 @@ HEAD = '''// {title}
 // thing that changed is a linkage the caller cannot observe.
 //
 // MACROS ARE NOT HERE, and cannot be: `export` names entities and a macro is
-// not one. wayland's public macros live in the `wayland.util` module
+// not one. wayland's public macros live in the `freedesktop.wayland.util` module
 // (freedesktop.wayland-util), which maps each to the entity it actually is.
 module;
 
@@ -105,12 +105,12 @@ export module {mod};
 '''
 
 for side, mod, incs, title in [
-    ("client", "wayland.client",
+    ("client", "freedesktop.wayland.client",
      ["<wayland-client-core.h>"],
-     "wayland.client — libwayland-client, as a C++23 module."),
-    ("server", "wayland.server",
+     "freedesktop.wayland.client — libwayland-client, as a C++23 module."),
+    ("server", "freedesktop.wayland.server",
      ["<wayland-server-core.h>"],
-     "wayland.server — libwayland-server, as a C++23 module."),
+     "freedesktop.wayland.server — libwayland-server, as a C++23 module."),
 ]:
     proto = GEN / f"wayland-{side}-protocol.h"
     hdrs = [F/"upstream/src/wayland-util.h", F/f"upstream/src/wayland-{side}-core.h"]

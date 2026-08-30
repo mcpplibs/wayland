@@ -7,9 +7,9 @@ four packages, all out of this one tarball:
 | package | output |
 |---|---|
 | `freedesktop.wayland-scanner` | `wayland-scanner`, the protocol code generator |
-| `freedesktop.wayland` | `libwayland-client.so.0` + `import wayland.client;` |
-| `freedesktop.wayland-server` | `libwayland-server.so.0` + `import wayland.server;` |
-| `freedesktop.wayland-util` | `import wayland.util;` — the macros, as entities |
+| `freedesktop.wayland` | `libwayland-client.so.0` + `import freedesktop.wayland.client;` |
+| `freedesktop.wayland-server` | `libwayland-server.so.0` + `import freedesktop.wayland.server;` |
+| `freedesktop.wayland-util` | `import freedesktop.wayland.util;` — the macros, as entities |
 
 ```bash
 mcpp build --workspace
@@ -17,7 +17,7 @@ mcpp build --workspace
 
 ## The module wrappers add no API
 
-`import wayland.client;` replaces `#include <wayland-client.h>` and changes
+`import freedesktop.wayland.client;` replaces `#include <wayland-client.h>` and changes
 nothing else. Every exported name is upstream's, spelled upstream's way, with
 upstream's semantics — there are no wrapper types, no RAII, no renaming — so
 code written against the C headers ports by swapping one line.
@@ -48,7 +48,7 @@ rule decides the whole layout here:
 ## Macros are the one thing that could not cross
 
 `export` names entities, and a macro is not one. Wayland's public surface has
-fourteen, so `wayland.util` maps each to what it actually is:
+fourteen, so `freedesktop.wayland.util` maps each to what it actually is:
 
 | macro | in the module |
 |---|---|
@@ -111,8 +111,8 @@ mcpp/                 everything this fork adds
   scanner/            the generator
   util/               the macro mappings + their test
   generated/          wayland-scanner's output, checked in — see its README
-  client/             libwayland-client + wayland.client
-  server/             libwayland-server + wayland.server
+  client/             libwayland-client + freedesktop.wayland.client
+  server/             libwayland-server + freedesktop.wayland.server
 mcpp.toml             the workspace root
 ```
 

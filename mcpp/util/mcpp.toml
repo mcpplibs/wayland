@@ -1,7 +1,7 @@
 # freedesktop.wayland-util — wayland's public macros, as a module.
 #
 # A module cannot export a macro, so the fourteen in wayland's public headers
-# would simply be missing from `import wayland.client;`. This package carries
+# would simply be missing from `import freedesktop.wayland.client;`. This package carries
 # them as a constant, a function template and a set of ranges — see
 # src/wayland-util.cppm for the one-to-one table.
 #

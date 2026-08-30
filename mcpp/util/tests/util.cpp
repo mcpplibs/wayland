@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-import wayland.util;
+import freedesktop.wayland.util;
 
 namespace {
 
