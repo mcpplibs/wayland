@@ -1,0 +1,66 @@
+// Generate the protocol sources for libwayland-server.
+//
+// wayland's libraries are mostly GENERATED: protocol/wayland.xml describes
+// every interface, and wayland-scanner emits the marshalling code and the
+// headers from it. Upstream does this with meson custom_targets; here it is
+// three mcpp::action edges, which means the work is DECLARED rather than done
+// — it re-runs exactly when wayland.xml changes, and a failure is attributed
+// to the edge instead of to "build.mcpp exited 1".
+//
+// The scanner is the one this build produced (compat.wayland-scanner, asked
+// for with `tools = ["wayland-scanner"]`), never a host one. That matters
+// more than it looks: a system wayland-scanner 1.22 rejects 1.23's
+// wayland.xml outright — it does not know the `deprecated-since` attribute —
+// so a build that reached for the host would fail or, worse, silently emit
+// code for a different protocol revision than the headers describe.
+#include <cstdio>
+#include <string>
+
+import mcpp;
+
+int main() {
+    const std::string root = mcpp::manifest_dir();
+    const std::string out  = mcpp::out_dir();
+
+    const char *scanner = mcpp::dep_bin("wayland-scanner", "wayland-scanner");
+    if (scanner == nullptr || *scanner == '\0') {
+        std::fputs("no wayland-scanner: declare  compat.wayland-scanner = "
+                   "{ version = \"1.23.1\", tools = [\"wayland-scanner\"] }\n",
+                   stderr);
+        return 1;
+    }
+
+    const std::string xml = root + "/../../protocol/wayland.xml";
+
+    struct Gen { const char *id; const char *mode; const char *core; const char *output; };
+    const Gen work[] = {
+        // The marshalling code: wl_interface tables and the proxy/resource
+        // stubs. Both libraries carry it — upstream does the same, and
+        // `wl_display_interface` is exported from libwayland-client.so.0 and
+        // libwayland-server.so.0 alike.
+        { "wayland:protocol-code", "public-code",  nullptr, "wayland-protocol.c" },
+        { "wayland:server-header", "server-header",       nullptr, "wayland-server-protocol.h" },
+        // The -c variant: the same header without the convenience wrappers.
+        // Not installed by upstream, but the .c above includes it.
+        { "wayland:server-core",   "server-header",   "-c",    "wayland-server-protocol-core.h" },
+    };
+
+    for (const Gen &g : work) {
+        const std::string output = out + "/" + g.output;
+        mcpp::action a;
+        a.id          = g.id;
+        a.role        = "source";
+        a.description = std::string("wayland-scanner -> ") + g.output;
+        a.arg(scanner).arg("-s").arg(g.mode);
+        if (g.core != nullptr) {
+            a.arg(g.core);
+        }
+        a.arg(xml.c_str())
+         .arg(output.c_str())
+         .input(xml.c_str())
+         .output(output.c_str())
+         .submit();
+    }
+
+    mcpp::include_dir(out.c_str());
+}

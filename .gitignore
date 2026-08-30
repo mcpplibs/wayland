@@ -1,0 +1,5 @@
+# mcpp build output
+target/
+.mcpp/
+compile_commands.json
+mcpp.lock

@@ -1,0 +1,71 @@
+# libwayland-server — the compositor side of the Wayland protocol.
+#
+# A separate package from the server, and that is not a stylistic split: the
+# two are distinct SONAMEs (`libwayland-client.so.0` / `libwayland-server.so.0`)
+# and Mesa's libEGL_mesa carries DT_NEEDED on BOTH, so they must be two files.
+# mcpp compiles a package's sources once and links every library target against
+# all of them — there is no per-target source list — so one package cannot emit
+# two libraries with disjoint contents. mcpp's own diagnostic says as much:
+# "for config that must affect shared code, split into a workspace member".
+[package]
+name     = "wayland-server"
+version  = "1.23.1"
+standard = "c++23"
+
+[build]
+# upstream's `wayland_server` = wayland-server.c + wayland-shm.c + event-loop.c + the generated protocol,
+# plus the two internal convenience libraries it links: `wayland_private`
+# (connection.c, wayland-os.c) and `wayland_util` (wayland-util.c). The
+# generated wayland-protocol.c arrives from build.mcpp, not from here.
+sources = [
+    "../../src/wayland-server.c",
+    "../../src/wayland-shm.c",
+    "../../src/event-loop.c",
+    "../../src/connection.c",
+    "../../src/wayland-os.c",
+    "../../src/wayland-util.c",
+]
+include_dirs = ["../..", "../../src", "../include"]
+# -include config.h is how upstream delivers the probe results; the sources
+# have no #include for it and the `#ifndef HAVE_STRNDUP` fallback would
+# otherwise compile a second strndup() that shadows glibc's process-wide.
+# -fvisibility=hidden matches upstream's compiler_flags: the public surface is
+# exactly what WL_EXPORT marks.
+cflags = [
+    # Empty value, not the bare form: event-loop.c does NOT define
+    # _GNU_SOURCE itself (it needs SIG_BLOCK and CLOCK_MONOTONIC), while
+    # wayland-client.c and connection.c DO. `-D_GNU_SOURCE` would expand to
+    # `1` and warn "redefined" in those two; `-D_GNU_SOURCE=` matches their
+    # empty definition exactly.
+    "-D_GNU_SOURCE=",
+    # The probe results meson writes into config.h. Passed as -D rather than
+    # `-include config.h`: mcpp forwards cflags verbatim, and gcc reads the
+    # two-token `-include config.h` as a second INPUT FILE once a target has
+    # more than one source ("cannot specify -o with -c with multiple files").
+    # wayland-shm.c also has an explicit `#include "config.h"`, which resolves
+    # through ../include; these -D values and that file agree by construction.
+    "-DHAVE_ACCEPT4=1",
+    "-DHAVE_MEMFD_CREATE=1",
+    "-DHAVE_MKOSTEMP=1",
+    "-DHAVE_POSIX_FALLOCATE=1",
+    "-DHAVE_PRCTL=1",
+    "-DHAVE_MREMAP=1",
+    "-DHAVE_STRNDUP=1",
+    "-DHAVE_SYS_PRCTL_H=1",
+    "-DHAVE_XUCRED_CR_PID=0",
+    "-DHAVE_BROKEN_MSG_CMSG_CLOEXEC=0",
+    "-fPIC",
+    "-fvisibility=hidden",
+]
+
+[targets.wayland-server]
+kind   = "shared"
+soname = "libwayland-server.so.0"
+
+[dependencies]
+# libffi is not optional: wl_closure_invoke dispatches every inbound message
+# through ffi_call.
+compat.libffi = "3.4.8"
+# The generator, as a host tool. Its version IS this package's version, so a
+# scanner/protocol mismatch is not expressible.
+compat.wayland-scanner = { version = "1.23.1", tools = ["wayland-scanner"] }

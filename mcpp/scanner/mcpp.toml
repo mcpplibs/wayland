@@ -1,0 +1,37 @@
+# wayland-scanner — the protocol code generator.
+#
+# It is its own package because the two libraries both need it BEFORE they have
+# any sources: wayland's client and server libraries are largely generated from
+# protocol/wayland.xml, and the generator is a C program in the same tree. Same
+# split, and same reason, as compat.protobuf exposing `protoc`.
+#
+# DTD validation is left off. Upstream gates it behind `HAVE_LIBXML` and an
+# optional libxml-2.0 dependency; without it the scanner still parses the XML
+# with Expat and simply does not cross-check it against wayland.dtd. Turning it
+# on would add libxml2 to this index for a check that only matters to people
+# EDITING the protocol.
+[package]
+name     = "wayland-scanner"
+version  = "1.23.1"
+standard = "c++23"
+
+[build]
+# wayland-util.c is upstream's `wayland_util` static library — the scanner
+# links it for wl_list/wl_array.
+sources      = ["../../src/wayland-util.c"]
+# ../../src for wayland-util.h; ../include for the committed config.h and
+# wayland-version.h that scanner.c includes.
+include_dirs = ["../..", "../../src", "../include"]
+# `-include config.h` is how upstream delivers it (meson's
+# `scanner_args = ['-include', 'config.h']`); scanner.c has no #include for
+# it. Without this its `#ifndef HAVE_STRNDUP` fallback compiles a second
+# strndup() into the binary, which then SHADOWS glibc's for every library the
+# process loads — mcpp reports it, and it is a real defect rather than noise.
+cflags       = ["-DHAVE_STRNDUP=1"]
+
+[targets.wayland-scanner]
+kind = "bin"
+main = "../../src/scanner.c"
+
+[dependencies]
+compat.expat = "2.7.1"

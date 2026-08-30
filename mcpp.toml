@@ -1,0 +1,33 @@
+# wayland-m — Wayland with mcpp build support.
+#
+# A fork of freedesktop's wayland at 1.23.1, unmodified except for this
+# directory tree: `mcpp/` adds manifests, `config.h` and `mcpp/include/` add the
+# two headers upstream's meson generates. No upstream source file is patched.
+#
+# WHY A FORK RATHER THAN AN INLINE INDEX DESCRIPTOR
+#
+# wayland's libraries are mostly GENERATED. protocol/wayland.xml describes every
+# interface, and wayland-scanner — a C program in this same tree — emits ~12,000
+# lines of marshalling code and headers from it. An mcpp-index descriptor cannot
+# express that: it has no build step, and the generator has to be COMPILED before
+# it can run, so an install() hook cannot do it either (mcpp compiles a package's
+# sources at consumer-build time, so no package binary exists during install).
+#
+# `build.mcpp` is exactly the mechanism for this, and it only exists for a real
+# mcpp project. Same reason mcpplibs/grpc-m exists.
+#
+# WHY THREE MEMBERS
+#
+# `libwayland-client.so.0` and `libwayland-server.so.0` are distinct SONAMEs and
+# Mesa's libEGL_mesa has DT_NEEDED on both, so they must be two files with
+# disjoint contents. mcpp compiles a package's sources once and links every
+# library target against all of them — there is no per-target source list, and a
+# feature-gated target still receives the feature's sources in BOTH libraries
+# (measured). mcpp's own diagnostic names the remedy: "for config that must
+# affect shared code, split into a workspace member".
+[workspace]
+members = [
+    "mcpp/scanner",
+    "mcpp/client",
+    "mcpp/server",
+]
