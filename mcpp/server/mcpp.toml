@@ -17,7 +17,11 @@ standard = "c++23"
 # upstream's `wayland_server` = wayland-server.c + wayland-shm.c + event-loop.c + the generated protocol,
 # plus the two internal convenience libraries it links: `wayland_private`
 # (connection.c, wayland-os.c) and `wayland_util` (wayland-util.c). The
-# generated wayland-protocol.c arrives from build.mcpp, not from here.
+# `../generated/wayland-protocol.c` is wayland-scanner's output, checked in
+# because these are the package's PUBLIC interface — wayland-server.h
+# includes the generated header, so every consumer needs it on the include
+# path, and `mcpp::include_dir()` from a build.mcpp is package-private by
+# design. See ../generated/README.md.
 sources = [
     "../../upstream/src/wayland-server.c",
     "../../upstream/src/wayland-shm.c",
@@ -25,10 +29,11 @@ sources = [
     "../../upstream/src/connection.c",
     "../../upstream/src/wayland-os.c",
     "../../upstream/src/wayland-util.c",
+    "../generated/wayland-protocol.c",
     # the module wrapper; see src/wayland-server.cppm
     "src/wayland-server.cppm",
 ]
-include_dirs = ["..", "../../upstream/src", "../include"]
+include_dirs = ["..", "../../upstream/src", "../include", "../generated"]
 # -include config.h is how upstream delivers the probe results; the sources
 # have no #include for it and the `#ifndef HAVE_STRNDUP` fallback would
 # otherwise compile a second strndup() that shadows glibc's process-wide.
@@ -75,6 +80,3 @@ soname = "libwayland-server.so.0"
 # libffi is not optional: wl_closure_invoke dispatches every inbound message
 # through ffi_call.
 compat.libffi = "3.4.8"
-# The generator, as a host tool. Its version IS this package's version, so a
-# scanner/protocol mismatch is not expressible.
-freedesktop.wayland-scanner = { version = "1.26.0", tools = ["wayland-scanner"] }

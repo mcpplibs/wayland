@@ -90,8 +90,9 @@ mcpp/                 everything this fork adds
   include/            wayland-version.h, substituted from src/wayland-version.h.in
   scanner/            the generator
   util/               the macro mappings + their test
-  client/             libwayland-client + wayland.client, and build.mcpp
-  server/             libwayland-server + wayland.server, and build.mcpp
+  generated/          wayland-scanner's output, checked in — see its README
+  client/             libwayland-client + wayland.client
+  server/             libwayland-server + wayland.server
 mcpp.toml             the workspace root
 ```
 
@@ -102,19 +103,17 @@ comparing. Not by building it with meson: this repository builds one way,
 through mcpp, and comparing is the stronger check anyway — a successful meson
 build proves the tree still builds, not that nothing was edited.
 
-`build.mcpp` runs wayland-scanner at CONFIGURE time rather than declaring
-`mcpp::action` edges. The declarative shape was tried first and does not work
-for a dependency's own sources: an action's outputs become ninja nodes, but the
-package's compile edges get no order-only dependency on them, so
-`wayland-server.o` races the generator —
+The protocol code is **checked in** under `mcpp/generated/`, not produced during
+the build. `wayland-client.h` includes the generated header, which makes it part
+of the package's PUBLIC interface — every consumer needs it on their include
+path — and `mcpp::include_dir()` from a `build.mcpp` is package-private by
+design. Generating it at build time also raced the package's own compiles
+(mcpp-community/mcpp#534). It is deterministic from a pinned `wayland.xml`, so
+checking it in costs nothing, and CI regenerates and diffs it on every run.
 
-```
-wayland-server.c:334: error: 'WL_DISPLAY_ERROR' undeclared
-```
-
-with the header landing in the output directory moments later. build.mcpp runs
-before ninja is written, so doing the work there is ordered by construction;
-`rerun_if_changed(wayland.xml)` keeps it incremental.
+`freedesktop.wayland-scanner` is still a package: a compositor generating
+bindings for `wayland-protocols` XML needs exactly that tool, and asking for it
+by name pins its version to this one.
 
 ## Upstream
 

@@ -97,6 +97,30 @@ jobs:
           readelf --dyn-syms -W "$s" | grep -q ' wl_display_connect' && { echo "server leaked the client API"; exit 1; }
           echo "client and server APIs are disjoint"
 
+      - name: mcpp/generated/ matches what the scanner produces
+        run: |
+          # The generated protocol code is checked in because it is the
+          # package's PUBLIC interface (wayland-client.h includes it), so a
+          # build-time include dir cannot carry it. Checked in means it can
+          # drift; this is what stops it.
+          scanner=$(find mcpp/scanner/target -name wayland-scanner -type f | head -1)
+          X=upstream/protocol/wayland.xml
+          mkdir -p /tmp/regen
+          "$scanner" -s public-code    "$X" /tmp/regen/wayland-protocol.c
+          for side in client server; do
+            "$scanner" -s $side-header    "$X" /tmp/regen/wayland-$side-protocol.h
+            "$scanner" -s $side-header -c "$X" /tmp/regen/wayland-$side-protocol-core.h
+          done
+          for f in /tmp/regen/*; do
+            n=$(basename "$f")
+            if ! diff -q "$f" "mcpp/generated/$n" >/dev/null; then
+              echo "::error file=mcpp/generated/$n::out of date — regenerate it (see mcpp/generated/README.md)"
+              diff "$f" "mcpp/generated/$n" | head -20
+              exit 1
+            fi
+          done
+          echo "generated code matches wayland.xml and this scanner"
+
       - name: every module produced an interface
         run: |
           for m in client server util; do
