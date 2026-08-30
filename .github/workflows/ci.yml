@@ -10,11 +10,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  # The floor mcpp-index is tested against — consumers reach these packages
-  # through that index, so this is the version that matters, not the newest.
-  MCPP_VERSION: "2026.8.27.2"
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,36 +24,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The release tarball, not the interactive installer: `curl | bash` of
-      # the xlings installer wants /dev/tty and exits 1 on a runner. A released
-      # mcpp is self-contained — it resolves its registry from beside its own
-      # executable — so MCPP_HOME is the tarball root rather than ~/.mcpp.
-      - name: Download mcpp
+      # Installed the way a user does, through xlings, rather than by
+      # unpacking an mcpp release: these packages depend on the ECOSYSTEM
+      # (`xim:mesa`'s GBM discovery row, the toolchains), and a pinned mcpp
+      # tarball carries a frozen snapshot of it. Testing against the current
+      # ecosystem is the point.
+      #
+      # XLINGS_NON_INTERACTIVE is what makes the installer usable here. Without
+      # it the script takes its `curl | bash` branch — `xlings self install <
+      # /dev/tty` — and a runner has a /dev/tty that is readable but not
+      # connected, so it dies with "No such device or address" before anything
+      # is installed.
+      - name: Install xlings + mcpp
         env:
-          MCPP_ARCHIVE: mcpp-2026.8.27.2-linux-x86_64.tar.gz
-          MCPP_ROOT: mcpp-2026.8.27.2-linux-x86_64
+          XLINGS_NON_INTERACTIVE: "1"
         run: |
-          curl -L -fsS -o "$MCPP_ARCHIVE" \
-            "https://github.com/mcpp-community/mcpp/releases/download/v${MCPP_VERSION}/${MCPP_ARCHIVE}"
-          tar -xzf "$MCPP_ARCHIVE"
-          root="$PWD/$MCPP_ROOT"
-          echo "MCPP=$root/bin/mcpp" >> "$GITHUB_ENV"
-          echo "MCPP_HOME=$root" >> "$GITHUB_ENV"
+          curl -fsSL https://d2learn.org/xlings-install.sh | bash
+          echo "$HOME/.xlings/bin" >> "$GITHUB_PATH"
+          "$HOME/.xlings/bin/xlings" --version
+          "$HOME/.xlings/bin/xlings" install mcpp
+          echo "$HOME/.xlings/subos/default/bin" >> "$GITHUB_PATH"
 
       - name: Select toolchain
         if: matrix.toolchain != 'default'
         run: |
-          "$MCPP" toolchain install ${{ matrix.toolchain }}
-          "$MCPP" toolchain default ${{ matrix.toolchain }}
-          "$MCPP" toolchain list
+          mcpp toolchain install ${{ matrix.toolchain }}
+          mcpp toolchain default ${{ matrix.toolchain }}
+          mcpp toolchain list
 
       - name: Build the workspace
         run: |
-          "$MCPP" --version
-          "$MCPP" build --workspace
+          mcpp --version
+          mcpp build --workspace
 
       - name: The macro mappings actually run
-        run: "$MCPP" test -p mcpp/util
+        run: mcpp test -p mcpp/util
 
       - name: wayland-scanner is ours, and is 1.26.0
         run: |
