@@ -1,4 +1,4 @@
-# wayland-m
+# mcpplibs/wayland
 
 [Wayland](https://gitlab.freedesktop.org/wayland/wayland) 1.23.1 with mcpp build
 support, consumed from [mcpp-index](https://github.com/mcpplibs/mcpp-index) as

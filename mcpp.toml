@@ -1,4 +1,4 @@
-# wayland-m — Wayland with mcpp build support.
+# wayland — Wayland with mcpp build support.
 #
 # A fork of freedesktop's wayland at 1.23.1, unmodified except for this
 # directory tree: `mcpp/` adds manifests, `config.h` and `mcpp/include/` add the
