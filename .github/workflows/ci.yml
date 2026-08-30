@@ -100,12 +100,25 @@ jobs:
         run: |
           # Mesa's libEGL_mesa has DT_NEEDED on both; if one carried the other's
           # API the process would bind to whichever loaded first.
+          #
+          # Written with `if`, not `grep -q … && { exit 1; }`: under `bash -e`
+          # that compound returns non-zero exactly when grep finds NOTHING —
+          # which is the outcome we want — and the step fails on success.
           c=$(find . -name libwayland-client.so -type f | head -1)
           s=$(find . -name libwayland-server.so -type f | head -1)
-          readelf --dyn-syms -W "$c" | grep -q ' wl_display_connect' || exit 1
-          readelf --dyn-syms -W "$c" | grep -q ' wl_display_create'  && { echo "client leaked the server API"; exit 1; }
-          readelf --dyn-syms -W "$s" | grep -q ' wl_display_create'  || exit 1
-          readelf --dyn-syms -W "$s" | grep -q ' wl_display_connect' && { echo "server leaked the client API"; exit 1; }
+          test -n "$c" && test -n "$s" || { echo "::error::a library is missing"; exit 1; }
+
+          has() { readelf --dyn-syms -W "$1" | grep -q " $2$"; }
+
+          has "$c" wl_display_connect || { echo "::error::client lost wl_display_connect"; exit 1; }
+          has "$s" wl_display_create  || { echo "::error::server lost wl_display_create"; exit 1; }
+
+          if has "$c" wl_display_create; then
+            echo "::error::libwayland-client exports the SERVER api (wl_display_create)"; exit 1
+          fi
+          if has "$s" wl_display_connect; then
+            echo "::error::libwayland-server exports the CLIENT api (wl_display_connect)"; exit 1
+          fi
           echo "client and server APIs are disjoint"
 
       - name: mcpp/generated/ matches what the scanner produces
