@@ -140,3 +140,41 @@ by name pins its version to this one.
 Tracking wayland 1.26.0. `upstream/` is the release tarball byte for byte, and
 CI diffs it against a freshly downloaded one on every run — so "no upstream file
 is patched" has a test rather than a promise.
+
+## ⭐ 八个曾经够不着的函数(本次修复)
+
+`static inline` 是内部链接,C++ 禁止从模块导出。这个 fork 一直**知道**这个坑 ——
+它为 wayland-scanner 生成的包装做了 `inline` 副本 —— 但漏了两个手写头文件里的:
+
+| 头文件 | 函数 | 归属模块 |
+|---|---|---|
+| `wayland-server-core.h` | `wl_signal_init/_add/_get/_emit` | `freedesktop.wayland.server` |
+| `wayland-util.h` | `wl_fixed_to/from_double/int` | `freedesktop.wayland.client` |
+
+**这不是边角**。每一次 wlroots 监听注册都是 `wl_signal_add(&x->events.y, &l)` ——
+**少了它就没法用模块路线写合成器**;而 `wl_fixed_t` 是协议里每个亚像素坐标的载体
+(指针移动、触摸、数位板),**少了它处理不了输入事件**。
+
+⚠️ **没人发现,因为这个包的测试从没调用过其中任何一个。** 缺口是从**外面**被问出来
+的 —— 一个最小 wlroots 合成器写不下去。同一类问题在 `freedesktop.cairo`(少
+`cairo_t`)和 `displayinfo`(少 295 个枚举量)上都出现过,发现方式也一样。
+
+### 做法与两个坑
+
+原来的 `inline` 副本手法在这里**不适用**:这两个头必须进 global module fragment
+(其它声明要用它们的类型),所以 `static` 定义已经可见,在 purview 里同名定义就是
+重定义。做法是**先把 static 原件改名让开**,再用真名定义并导出。
+
+两个只有 clang 会说的问题:
+
+- **`struct wl_signal *` 不能写**。elaborated-type-specifier 会在模块里**重新声明**
+  该类型:`declaration of 'wl_signal' in module ... follows declaration in the
+  global module`。GCC 静默接受。去掉 `struct` 关键字即可。
+- **`wl_fixed_*` 不能放进 `freedesktop.wayland.util`**。那个模块是**和头文件配对**
+  设计的(只出宏和模板,零个 `using ::`),它自己的测试就写着
+  `#include <wayland-util.h>` + `import`。加同名实体会让每次调用
+  `call to 'wl_fixed_from_int' is ambiguous`。也**没有**同时放进 server ——
+  两个模块各自的实体,对同时 import 两者的 TU 一样是二义。
+
+三个模块同时 import 已实测:gcc 16.1 与 llvm 22.1 都通过。
+

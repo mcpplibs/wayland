@@ -27,9 +27,83 @@
 // (freedesktop.wayland-util), which maps each to the entity it actually is.
 module;
 
+// ⭐ THE FOUR wl_signal_* FUNCTIONS ARE RENAMED OUT OF THE WAY BEFORE THE
+// HEADER IS SEEN, so this module can define them under their real names with
+// EXTERNAL linkage and export them.
+//
+// `wayland-server-core.h` defines wl_signal_init / _add / _get / _emit as
+// `static inline`. That is the same internal-linkage trap the protocol
+// wrappers hit — but the copy-with-`inline` trick used for those does not
+// apply here, because this header must be in the global module fragment for
+// its types, so the `static` definitions are already visible. Defining the
+// same names in the purview is simply a redefinition:
+//
+//     error: redefinition of 'void wl_signal_add(wl_signal*, wl_listener*)'
+//
+// Renaming the originals is what leaves the names free. The renamed statics
+// stay valid and unused; nothing else in the header calls them.
+//
+// ⚠️ THESE ARE NOT OPTIONAL EXTRAS. Every wlroots listener registration is
+// `wl_signal_add(&thing->events.x, &listener)`, so without them a compositor
+// CANNOT be written through the module route at all:
+//
+//     error: 'wl_signal_add' was not declared in this scope
+//
+// That is how the gap was found — from outside, by a minimal wlroots
+// compositor, not by this package's own tests, which never named one.
+#define wl_signal_init  mcpp_wl_signal_init_static
+#define wl_signal_add   mcpp_wl_signal_add_static
+#define wl_signal_get   mcpp_wl_signal_get_static
+#define wl_signal_emit  mcpp_wl_signal_emit_static
 #include <wayland-server-core.h>
+#undef wl_signal_init
+#undef wl_signal_add
+#undef wl_signal_get
+#undef wl_signal_emit
 
 export module freedesktop.wayland.server;
+
+// The four, under their real names, with the bodies upstream gives them.
+//
+// ⚠️ NO `struct` KEYWORD IN THESE SIGNATURES. Writing `struct wl_signal *` is
+// an elaborated-type-specifier, which DECLARES the type — inside a module
+// purview that is a new, module-attached declaration and clang rejects it:
+//
+//     error: declaration of 'wl_signal' in module freedesktop.wayland.server
+//            follows declaration in the global module
+//
+// GCC accepted it silently. The types are already visible from the global
+// module fragment; naming them plainly uses those.
+export {
+
+inline void wl_signal_init(wl_signal *signal)
+{
+    wl_list_init(&signal->listener_list);
+}
+
+inline void wl_signal_add(wl_signal *signal, wl_listener *listener)
+{
+    wl_list_insert(signal->listener_list.prev, &listener->link);
+}
+
+inline wl_listener *wl_signal_get(wl_signal *signal,
+                                         wl_notify_func_t notify)
+{
+    wl_listener *l;
+    wl_list_for_each(l, &signal->listener_list, link)
+        if (l->notify == notify)
+            return l;
+    return nullptr;
+}
+
+inline void wl_signal_emit(wl_signal *signal, void *data)
+{
+    wl_listener *l, *next;
+    wl_list_for_each_safe(l, next, &signal->listener_list, link)
+        l->notify(l, data);
+}
+
+} // export
 
 export {
 

@@ -27,9 +27,50 @@
 // (freedesktop.wayland-util), which maps each to the entity it actually is.
 module;
 
+// ⭐ THE FOUR wl_fixed_* CONVERSIONS, RENAMED OUT OF THE WAY so this module can
+// export them under their real names.
+//
+// `wayland-util.h` (reached through wayland-client-core.h) defines them
+// `static inline`, and C++ forbids exporting internal linkage — so before this
+// change a consumer on the MODULE ROUTE could not convert a fixed-point value
+// at all. `wl_fixed_t` is how the protocol carries every sub-pixel coordinate:
+// wl_pointer motion, touch points, tablet axes. A client that handles pointer
+// input was simply stuck.
+//
+// Nothing here noticed because no test ever converted one.
+//
+// ⚠️ THEY LIVE HERE, NOT IN freedesktop.wayland.util. That module is
+// deliberately header-PAIRED — it exports macros and templates and zero
+// `using ::` names, and its own test writes `#include <wayland-util.h>`
+// alongside the import. Adding same-name entities there makes every call
+// ambiguous on clang:
+//
+//     error: call to 'wl_fixed_from_int' is ambiguous
+//     note: candidate function (module) / candidate function (header)
+//
+// (GCC accepted it; the llvm leg caught it.) They are also NOT duplicated into
+// the server module, because a TU importing both would get the same ambiguity
+// between two module-attached entities.
+#define wl_fixed_to_double    mcpp_wl_fixed_to_double_static
+#define wl_fixed_from_double  mcpp_wl_fixed_from_double_static
+#define wl_fixed_to_int       mcpp_wl_fixed_to_int_static
+#define wl_fixed_from_int     mcpp_wl_fixed_from_int_static
 #include <wayland-client-core.h>
+#undef wl_fixed_to_double
+#undef wl_fixed_from_double
+#undef wl_fixed_to_int
+#undef wl_fixed_from_int
 
 export module freedesktop.wayland.client;
+
+// The four, with upstream's bodies from wayland-util.h. No `struct` keyword in
+// any signature: that would re-declare the type inside the module purview.
+export {
+inline double     wl_fixed_to_double(wl_fixed_t f)  { return f / 256.0; }
+inline wl_fixed_t wl_fixed_from_double(double d)    { return (wl_fixed_t)(round(d * 256.0)); }
+inline int        wl_fixed_to_int(wl_fixed_t f)     { return f / 256; }
+inline wl_fixed_t wl_fixed_from_int(int i)          { return i * 256; }
+} // export
 
 export {
 
